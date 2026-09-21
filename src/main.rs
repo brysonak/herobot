@@ -3,6 +3,7 @@ mod db;
 mod logging;
 mod purge;
 mod spam;
+mod tickets;
 mod util;
 
 use poise::serenity_prelude as serenity;

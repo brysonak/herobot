@@ -10,7 +10,7 @@ fn reason_or_blank(r: Option<String>) -> String {
 }
 
 /// Log lines that aren't about a specific punished user
-async fn log_note(ctx: &Ctx<'_>, color: u32, title: &str, fields: Vec<(&str, String, bool)>) {
+pub async fn log_note(ctx: &Ctx<'_>, color: u32, title: &str, fields: Vec<(&str, String, bool)>) {
     let mut e = serenity::CreateEmbed::new()
         .color(color)
         .title(title)
@@ -36,6 +36,7 @@ pub fn all() -> Vec<poise::Command<crate::Data, Error>> {
         mute(), unmute(), kick(), ban(), softban(), unban(),
         slowmode(), lock(), unlock(), whois(),
         crate::purge::purge(),
+        crate::tickets::ticket(),
     ]
 }
 

@@ -147,6 +147,36 @@ for `@everyone` in the current channel.
 `/unlock` resets the overwrite to neutral. If the channel had those permissions
 denied before you locked it, unlocking leaves it more open than it started.
 
+## Tickets
+
+Tickets are channels under the ticket category, named `userissue-N` or `bug-N`
+with separate counters.
+
+### `/ticket create <category>`
+`Anyone can run this`
+
+Opens a private channel for the user and the category's staff role, pinging that
+role unless pings are off. The first message has **Close** and **Close with
+Reason** buttons, usable by `Moderate Members` only.
+
+### `/ticket add <user>` and `/ticket remove <user>`
+`Moderate Members`
+
+Grants or revokes access to the current ticket. Remove uses a deny overwrite, so
+it also works on people who can see the ticket through a role. Administrators
+can't be removed.
+
+### `/ticket close`
+`Moderate Members`
+
+Deletes the ticket and DMs everyone who spoke in it, plus the opener, a summary:
+type, opener, closer, open and close times, reason, participants.
+
+### `/ticket pings <enabled>`
+`Moderate Members`
+
+Toggles the staff role ping on new tickets. Works from any channel.
+
 ## Information
 
 ### `/whois <user>`

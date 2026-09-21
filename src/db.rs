@@ -206,6 +206,12 @@ pub fn cached_message(c: &Connection, id: u64) -> rusqlite::Result<Option<Cached
     })
 }
 
+pub fn participants(c: &Connection, channel: u64) -> rusqlite::Result<Vec<u64>> {
+    let mut st = c.prepare("select distinct author_id from msgcache where channel_id = ?1")?;
+    let rows = st.query_map([channel as i64], |r| Ok(r.get::<_, i64>(0)? as u64))?;
+    rows.collect()
+}
+
 pub fn prune_cache(c: &Connection, keep_days: i64) -> rusqlite::Result<usize> {
     c.execute(
         "delete from msgcache where created < ?1",

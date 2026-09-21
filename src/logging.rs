@@ -55,6 +55,10 @@ pub async fn handle(
             crate::spam::on_message(ctx, new_message, data).await?;
         }
 
+        E::InteractionCreate { interaction } => {
+            crate::tickets::on_interaction(ctx, interaction, data).await?;
+        }
+
         E::MessageDelete {
             channel_id,
             deleted_message_id,
