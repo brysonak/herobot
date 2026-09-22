@@ -107,9 +107,22 @@ pub async fn ensure_channel(
         )
     };
 
-    let channel = match stored.0.map(serenity::ChannelId::new) {
-        Some(id) if id.to_channel(&ctx.http).await.is_ok() => id,
-        _ => {
+    let existing = match stored.0.map(serenity::ChannelId::new) {
+        Some(id) => match id.to_channel(&ctx.http).await {
+            Ok(_) => Some(id),
+            Err(serenity::Error::Http(serenity::HttpError::UnsuccessfulRequest(r)))
+                if r.error.code == 10003 =>
+            {
+                None
+            }
+            Err(e) => return Err(e.into()),
+        },
+        None => None,
+    };
+
+    let channel = match existing {
+        Some(id) => id,
+        None => {
             let made = guild
                 .create_channel(
                     &ctx.http,
@@ -125,12 +138,20 @@ pub async fn ensure_channel(
         }
     };
 
+    // armed before the rename so a failed rename can't leave the honeypot inert
+    *slot.lock().unwrap() = Some(channel);
+
     if stored.2 != Some(day as u64) {
-        channel
+        match channel
             .edit(&ctx.http, serenity::EditChannel::new().name(&name))
-            .await?;
-        let c = db.lock().unwrap();
-        db::kv_set(&c, K_DAY, &day.to_string())?;
+            .await
+        {
+            Ok(_) => {
+                let c = db.lock().unwrap();
+                db::kv_set(&c, K_DAY, &day.to_string())?;
+            }
+            Err(e) => eprintln!("honeypot rename failed, retrying next tick: {e}"),
+        }
     }
 
     let has_warning = match stored.1.map(serenity::MessageId::new) {
@@ -149,7 +170,6 @@ pub async fn ensure_channel(
         db::kv_set(&c, K_MESSAGE, &msg.id.get().to_string())?;
     }
 
-    *slot.lock().unwrap() = Some(channel);
     Ok(channel)
 }
 
