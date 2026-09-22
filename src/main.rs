@@ -84,7 +84,13 @@ async fn main() {
                 let images: spam::Windows = Arc::new(Mutex::new(HashMap::new()));
 
                 spam::spawn_rotation(ctx.clone(), db.clone(), guild, honeypot.clone());
-                spawn_unban_sweeper(ctx.http.clone(), db.clone(), guild, unban_wake.clone());
+                spawn_unban_sweeper(
+                    ctx.http.clone(),
+                    db.clone(),
+                    guild,
+                    log_channel,
+                    unban_wake.clone(),
+                );
                 spawn_janitor(db.clone(), images.clone());
 
                 Ok(Data {
@@ -101,6 +107,7 @@ async fn main() {
 
     let intents = serenity::GatewayIntents::GUILDS
         | serenity::GatewayIntents::GUILD_MEMBERS
+        | serenity::GatewayIntents::GUILD_MODERATION
         | serenity::GatewayIntents::GUILD_MESSAGES
         | serenity::GatewayIntents::MESSAGE_CONTENT;
 
@@ -122,6 +129,7 @@ fn spawn_unban_sweeper(
     http: Arc<serenity::Http>,
     db: spam::Db,
     guild: serenity::GuildId,
+    log_channel: serenity::ChannelId,
     wake: Arc<Notify>,
 ) {
     tokio::spawn(async move {
@@ -136,8 +144,16 @@ fn spawn_unban_sweeper(
 
             for (id, user) in due {
                 let user = serenity::UserId::new(user);
-                if let Err(e) = guild.unban(&http, user).await {
-                    eprintln!("unban {user} failed: {e}");
+                match guild.unban(&http, user).await {
+                    Ok(_) => {
+                        let e = serenity::CreateEmbed::new()
+                            .color(logging::GREEN)
+                            .title(format!("Temp ban expired - case #{id}"))
+                            .field("User", format!("<@{user}> `{user}`"), true)
+                            .timestamp(serenity::Timestamp::now());
+                        logging::send_to(&http, log_channel, e).await;
+                    }
+                    Err(e) => eprintln!("unban {user} failed: {e}"),
                 }
                 if let Err(e) = db::mark_undone(&db.lock().unwrap(), id) {
                     eprintln!("could not mark record {id}: {e}");

@@ -476,14 +476,34 @@ pub async fn softban(
 pub async fn unban(
     ctx: Ctx<'_>,
     #[description = "User id"] user_id: String,
+    #[description = "Why"] reason: Option<String>,
 ) -> Result<(), Error> {
     let id: u64 = user_id.trim().parse().map_err(|_| "that isn't a user id")?;
     let id = serenity::UserId::new(id);
+    let reason = reason_or_blank(reason);
     guild(&ctx)?.unban(ctx.http(), id).await?;
 
     let uid = id.get();
     ctx.data().with_db(move |c| db::mark_bans_undone(c, uid)).await?;
     ctx.say(format!("Unbanned `{id}`")).await?;
+
+    match id.to_user(ctx.http()).await {
+        Ok(user) => {
+            logging::action(ctx.serenity_context(), ctx.data(), logging::GREEN, "Unban", &user, ctx.author(), show(&reason), None, None).await;
+        }
+        Err(_) => {
+            log_note(
+                &ctx,
+                logging::GREEN,
+                "Unban",
+                vec![
+                    ("User", format!("<@{id}> `{id}`"), true),
+                    ("Reason", util::clamp_field(show(&reason)), false),
+                ],
+            )
+            .await;
+        }
+    }
     Ok(())
 }
 

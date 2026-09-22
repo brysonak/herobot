@@ -7,9 +7,16 @@ pub const GREEN: u32 = 0x52E086;
 pub const GREY: u32 = 0x8A8A8A;
 
 pub async fn send(ctx: &serenity::Context, data: &Data, embed: serenity::CreateEmbed) {
-    if let Err(e) = data
-        .log_channel
-        .send_message(&ctx.http, serenity::CreateMessage::new().embed(embed))
+    send_to(&ctx.http, data.log_channel, embed).await;
+}
+
+pub async fn send_to(
+    http: &serenity::Http,
+    channel: serenity::ChannelId,
+    embed: serenity::CreateEmbed,
+) {
+    if let Err(e) = channel
+        .send_message(http, serenity::CreateMessage::new().embed(embed))
         .await
     {
         eprintln!("log channel write failed: {e}");
@@ -172,6 +179,59 @@ pub async fn handle(
             send(ctx, data, e).await;
         }
 
+        E::GuildBanAddition { banned_user, .. } => {
+            ban_event(ctx, data, banned_user, true).await;
+        }
+
+        E::GuildBanRemoval { unbanned_user, .. } => {
+            ban_event(ctx, data, unbanned_user, false).await;
+        }
+
+        E::GuildMemberUpdate { old_if_available, event, .. } => {
+            if let Some(old) = old_if_available {
+                let added: Vec<_> = event.roles.iter().filter(|r| !old.roles.contains(r)).collect();
+                let removed: Vec<_> = old.roles.iter().filter(|r| !event.roles.contains(r)).collect();
+                if !added.is_empty() || !removed.is_empty() {
+                    let names = |v: Vec<&serenity::RoleId>| {
+                        v.iter().map(|r| format!("<@&{r}>")).collect::<Vec<_>>().join(" ")
+                    };
+                    let mut e = serenity::CreateEmbed::new()
+                        .color(GREY)
+                        .title("Roles changed")
+                        .field(
+                            "User",
+                            format!("{} `{}`", event.user.tag(), event.user.id),
+                            true,
+                        )
+                        .timestamp(serenity::Timestamp::now());
+                    if !added.is_empty() {
+                        e = e.field("Added", util::clamp_field(&names(added)), false);
+                    }
+                    if !removed.is_empty() {
+                        e = e.field("Removed", util::clamp_field(&names(removed)), false);
+                    }
+                    send(ctx, data, e).await;
+                }
+            }
+        }
+
+        E::MessageDeleteBulk {
+            channel_id,
+            multiple_deleted_messages_ids,
+            ..
+        } => {
+            if *channel_id == data.log_channel {
+                return Ok(());
+            }
+            let e = serenity::CreateEmbed::new()
+                .color(AMBER)
+                .title("Messages bulk deleted")
+                .field("Channel", format!("<#{channel_id}>"), true)
+                .field("Count", multiple_deleted_messages_ids.len().to_string(), true)
+                .timestamp(serenity::Timestamp::now());
+            send(ctx, data, e).await;
+        }
+
         E::GuildMemberRemoval { user, .. } => {
             let e = serenity::CreateEmbed::new()
                 .color(GREY)
@@ -189,4 +249,41 @@ pub async fn handle(
 fn db_age(id: serenity::UserId) -> String {
     let created = id.created_at().unix_timestamp();
     util::fmt_duration(crate::db::now() - created)
+}
+
+async fn ban_event(ctx: &serenity::Context, data: &Data, user: &serenity::User, added: bool) {
+    tokio::time::sleep(std::time::Duration::from_secs(2)).await;
+
+    let want = if added { 22 } else { 23 };
+    let entry = data
+        .guild
+        .audit_logs(&ctx.http, None, None, None, Some(50))
+        .await
+        .ok()
+        .and_then(|logs| {
+            logs.entries.into_iter().find(|e| {
+                e.action.num() == want && e.target_id.map(|t| t.get()) == Some(user.id.get())
+            })
+        });
+
+    if entry.as_ref().is_some_and(|e| e.user_id == ctx.cache.current_user().id) {
+        return;
+    }
+
+    let (moderator, reason) = match &entry {
+        Some(e) => (format!("<@{}>", e.user_id), e.reason.clone()),
+        None => ("unknown".to_string(), None),
+    };
+    let e = serenity::CreateEmbed::new()
+        .color(if added { RED } else { GREEN })
+        .title(if added { "Ban (outside the bot)" } else { "Unban (outside the bot)" })
+        .field("User", format!("{} `{}`", user.tag(), user.id), true)
+        .field("Moderator", moderator, true)
+        .field(
+            "Reason",
+            util::clamp_field(reason.as_deref().unwrap_or("*(no reason given)*")),
+            false,
+        )
+        .timestamp(serenity::Timestamp::now());
+    send(ctx, data, e).await;
 }
