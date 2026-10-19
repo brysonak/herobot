@@ -50,6 +50,7 @@ pub fn all() -> Vec<poise::Command<crate::Data, Error>> {
         whois(),
         crate::purge::purge(),
         crate::tickets::ticket(),
+        crate::translate::translate(),
     ]
 }
 

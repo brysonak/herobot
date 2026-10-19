@@ -4,6 +4,7 @@ mod logging;
 mod purge;
 mod spam;
 mod tickets;
+mod translate;
 mod util;
 
 use poise::serenity_prelude as serenity;
@@ -23,6 +24,7 @@ pub struct Data {
     pub honeypot: spam::Slot,
     pub images: spam::Windows,
     pub unban_wake: Arc<Notify>,
+    pub deepl: Option<translate::Deepl>,
 }
 
 impl Data {
@@ -59,9 +61,15 @@ async fn main() {
     let conn = db::open(&db_path).expect("could not open database");
     let db: spam::Db = Arc::new(Mutex::new(conn));
 
+    let deepl = translate::Deepl::from_env();
+
     let framework = poise::Framework::builder()
         .options(poise::FrameworkOptions {
             commands: cmds::all(),
+            prefix_options: poise::PrefixFrameworkOptions {
+                prefix: Some("!".into()),
+                ..Default::default()
+            },
             event_handler: |ctx, event, _fw, data| Box::pin(logging::handle(ctx, event, data)),
             ..Default::default()
         })
@@ -100,6 +108,7 @@ async fn main() {
                     honeypot,
                     images,
                     unban_wake,
+                    deepl,
                 })
             })
         })

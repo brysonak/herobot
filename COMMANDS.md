@@ -186,6 +186,18 @@ Account ID, creation date, join date, nickname, roles, record count, and time
 remaining if they're currently muted. Works on users who have left the server,
 with reduced detail.
 
+## Utility
+
+### `!translate`
+`Anyone can run this`
+
+Reply to a message with `!translate` to get it translated into English with
+DeepL. 
+
+Messages over 4000 characters are refused, and each user has a 5 second cooldown.
+The result is an embed, so translated mentions never ping anyone.
+
+
 ## Notes
 Reasons are capped at 512 characters.
 
