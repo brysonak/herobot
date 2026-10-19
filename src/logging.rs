@@ -295,14 +295,14 @@ async fn ban_event(ctx: &serenity::Context, data: &Data, user: &serenity::User, 
         .await
         .ok()
         .and_then(|logs| {
-            logs.entries.into_iter().find(|e| {
+            logs.entries.into_iter().find(|e: &serenity::AuditLogEntry| {
                 e.action.num() == want && e.target_id.map(|t| t.get()) == Some(user.id.get())
             })
         });
 
     if entry
         .as_ref()
-        .is_some_and(|e| e.user_id == ctx.cache.current_user().id)
+        .is_some_and(|e: &serenity::AuditLogEntry| e.user_id == ctx.cache.current_user().id)
     {
         return;
     }

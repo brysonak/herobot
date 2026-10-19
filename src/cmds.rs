@@ -126,10 +126,10 @@ pub async fn warn(
     .await;
 
     ctx.say(format!(
-        "Warned {} — case #{case} ({total} record{}){}",
+        "Warned {} - case #{case} ({total} record{}){}",
         user.tag(),
         if total == 1 { "" } else { "s" },
-        if dm { "" } else { " — DM failed" }
+        if dm { "" } else { " - DM failed" }
     ))
     .await?;
     logging::action(
@@ -160,7 +160,7 @@ pub async fn note(
         .data()
         .with_db(move |c| db::add(c, uid, mid, "note", &t, None))
         .await?;
-    ctx.say(format!("Noted on {} — case #{case}", user.tag()))
+    ctx.say(format!("Noted on {} - case #{case}", user.tag()))
         .await?;
     logging::action(
         ctx.serenity_context(),
@@ -365,7 +365,7 @@ pub async fn clearrecords(
 
     let mut summary = rows
         .iter()
-        .map(|r| format!("`#{}` {} — {}", r.id, r.kind, show(&r.reason)))
+        .map(|r| format!("`#{}` {} - {}", r.id, r.kind, show(&r.reason)))
         .collect::<Vec<_>>()
         .join("\n");
     if n > rows.len() {
@@ -433,7 +433,7 @@ pub async fn mute(
     .await;
 
     ctx.say(format!(
-        "Muted {} for {} — case #{case}",
+        "Muted {} for {} - case #{case}",
         user.tag(),
         util::fmt_duration(secs)
     ))
@@ -496,7 +496,7 @@ pub async fn kick(
         .data()
         .with_db(move |c| db::add(c, uid, mid, "kick", &r, None))
         .await?;
-    ctx.say(format!("Kicked {} — case #{case}", user.tag()))
+    ctx.say(format!("Kicked {} - case #{case}", user.tag()))
         .await?;
     logging::action(
         ctx.serenity_context(),
@@ -519,7 +519,7 @@ pub async fn ban(
     ctx: Ctx<'_>,
     #[description = "User"] user: serenity::User,
     #[description = "Why (can be filled in later with /case reason)"] reason: Option<String>,
-    #[description = "7d / 12h — omit for permanent"] duration: Option<String>,
+    #[description = "7d / 12h - omit for permanent"] duration: Option<String>,
     #[description = "Days of their messages to delete (0-7)"]
     #[min = 0]
     #[max = 7]
@@ -555,7 +555,7 @@ pub async fn ban(
     if expires.is_some() {
         ctx.data().unban_wake.notify_one();
     }
-    ctx.say(format!("Banned {} ({human}) — case #{case}", user.tag()))
+    ctx.say(format!("Banned {} ({human}) - case #{case}", user.tag()))
         .await?;
     logging::action(
         ctx.serenity_context(),
@@ -605,7 +605,7 @@ pub async fn softban(
         .data()
         .with_db(move |c| db::add(c, uid, mid, "softban", &r, None))
         .await?;
-    ctx.say(format!("Softbanned {} — case #{case}", user.tag()))
+    ctx.say(format!("Softbanned {} - case #{case}", user.tag()))
         .await?;
     logging::action(
         ctx.serenity_context(),
