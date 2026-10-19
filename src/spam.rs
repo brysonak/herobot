@@ -269,7 +269,16 @@ async fn honeypot_trip(
 
     let (target, actor) = (msg.author.id.get(), ctx.cache.current_user().id.get());
     let case = data
-        .with_db(move |c| db::add(c, target, actor, "ban", "Posted in the honeypot channel", None))
+        .with_db(move |c| {
+            db::add(
+                c,
+                target,
+                actor,
+                "ban",
+                "Posted in the honeypot channel",
+                None,
+            )
+        })
         .await?;
 
     let e = serenity::CreateEmbed::new()
@@ -280,7 +289,11 @@ async fn honeypot_trip(
             format!("{} `{}`", msg.author.tag(), msg.author.id),
             true,
         )
-        .field("Account age", util::fmt_duration(db::now() - msg.author.id.created_at().unix_timestamp()), true)
+        .field(
+            "Account age",
+            util::fmt_duration(db::now() - msg.author.id.created_at().unix_timestamp()),
+            true,
+        )
         .field("Content", util::clamp_field(&msg.content), false)
         .timestamp(serenity::Timestamp::now());
     logging::send(ctx, data, e).await;
@@ -392,11 +405,7 @@ async fn mirror(msg: &serenity::Message, data: &Data) -> Result<(), Error> {
         .collect::<Vec<_>>()
         .join(", ");
     let content: String = msg.content.chars().take(MIRROR_MAX).collect();
-    let (id, channel, author) = (
-        msg.id.get(),
-        msg.channel_id.get(),
-        msg.author.id.get(),
-    );
+    let (id, channel, author) = (msg.id.get(), msg.channel_id.get(), msg.author.id.get());
     data.with_db(move |c| db::cache_message(c, id, channel, author, &content, &files))
         .await?;
     Ok(())

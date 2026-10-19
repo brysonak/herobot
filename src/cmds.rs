@@ -32,9 +32,22 @@ fn show(reason: &str) -> &str {
 
 pub fn all() -> Vec<poise::Command<crate::Data, Error>> {
     vec![
-        warn(), note(), records(), cases(), case(), clearrecords(),
-        mute(), unmute(), kick(), ban(), softban(), unban(),
-        slowmode(), lock(), unlock(), whois(),
+        warn(),
+        note(),
+        records(),
+        cases(),
+        case(),
+        clearrecords(),
+        mute(),
+        unmute(),
+        kick(),
+        ban(),
+        softban(),
+        unban(),
+        slowmode(),
+        lock(),
+        unlock(),
+        whois(),
         crate::purge::purge(),
         crate::tickets::ticket(),
     ]
@@ -105,7 +118,12 @@ pub async fn warn(
         .await?;
 
     let guild_name = ctx.guild().map(|g| g.name.clone()).unwrap_or_default();
-    let dm = notify(&ctx, &user, format!("You were warned in **{guild_name}**: {}", show(&reason))).await;
+    let dm = notify(
+        &ctx,
+        &user,
+        format!("You were warned in **{guild_name}**: {}", show(&reason)),
+    )
+    .await;
 
     ctx.say(format!(
         "Warned {} — case #{case} ({total} record{}){}",
@@ -114,7 +132,18 @@ pub async fn warn(
         if dm { "" } else { " — DM failed" }
     ))
     .await?;
-    logging::action(ctx.serenity_context(), ctx.data(), logging::AMBER, "Warn", &user, ctx.author(), show(&reason), None, Some(case)).await;
+    logging::action(
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::AMBER,
+        "Warn",
+        &user,
+        ctx.author(),
+        show(&reason),
+        None,
+        Some(case),
+    )
+    .await;
     Ok(())
 }
 
@@ -131,8 +160,20 @@ pub async fn note(
         .data()
         .with_db(move |c| db::add(c, uid, mid, "note", &t, None))
         .await?;
-    ctx.say(format!("Noted on {} — case #{case}", user.tag())).await?;
-    logging::action(ctx.serenity_context(), ctx.data(), logging::GREY, "Note", &user, ctx.author(), &text, None, Some(case)).await;
+    ctx.say(format!("Noted on {} — case #{case}", user.tag()))
+        .await?;
+    logging::action(
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::GREY,
+        "Note",
+        &user,
+        ctx.author(),
+        &text,
+        None,
+        Some(case),
+    )
+    .await;
     Ok(())
 }
 
@@ -158,7 +199,15 @@ pub async fn records(
                 Some(e) => format!(" [{}]", util::fmt_duration(e - r.created)),
                 None => String::new(),
             };
-            format!("`#{}` **{}**{} by <@{}> {}\n{}", r.id, r.kind, dur, r.mod_id, when, show(&r.reason))
+            format!(
+                "`#{}` **{}**{} by <@{}> {}\n{}",
+                r.id,
+                r.kind,
+                dur,
+                r.mod_id,
+                when,
+                show(&r.reason)
+            )
         })
         .collect::<Vec<_>>()
         .join("\n\n");
@@ -183,11 +232,12 @@ pub async fn case(_: Ctx<'_>) -> Result<(), Error> {
 }
 
 /// View one case by number
-#[poise::command(slash_command, rename = "view", required_permissions = "MODERATE_MEMBERS")]
-pub async fn case_view(
-    ctx: Ctx<'_>,
-    #[description = "Case number"] id: i64,
-) -> Result<(), Error> {
+#[poise::command(
+    slash_command,
+    rename = "view",
+    required_permissions = "MODERATE_MEMBERS"
+)]
+pub async fn case_view(ctx: Ctx<'_>, #[description = "Case number"] id: i64) -> Result<(), Error> {
     let r = ctx.data().with_db(move |c| db::get(c, id)).await?;
     let Some(r) = r else {
         ctx.say(format!("No case #{id}")).await?;
@@ -216,7 +266,11 @@ pub async fn case_view(
 }
 
 /// Set or replace a case's reason, for when you had to act before you could explain
-#[poise::command(slash_command, rename = "reason", required_permissions = "MODERATE_MEMBERS")]
+#[poise::command(
+    slash_command,
+    rename = "reason",
+    required_permissions = "MODERATE_MEMBERS"
+)]
 pub async fn case_reason(
     ctx: Ctx<'_>,
     #[description = "Case number"] id: i64,
@@ -229,7 +283,9 @@ pub async fn case_reason(
         return Ok(());
     };
     let r = reason.clone();
-    ctx.data().with_db(move |c| db::set_reason(c, id, &r)).await?;
+    ctx.data()
+        .with_db(move |c| db::set_reason(c, id, &r))
+        .await?;
 
     ctx.say(format!(
         "Case #{id} ({} on <@{}>) now reads: {reason}",
@@ -250,7 +306,11 @@ pub async fn case_reason(
 }
 
 /// Remove a case from the record entirely
-#[poise::command(slash_command, rename = "delete", required_permissions = "MODERATE_MEMBERS")]
+#[poise::command(
+    slash_command,
+    rename = "delete",
+    required_permissions = "MODERATE_MEMBERS"
+)]
 pub async fn case_delete(
     ctx: Ctx<'_>,
     #[description = "Case number"] id: i64,
@@ -300,7 +360,8 @@ pub async fn clearrecords(
             Ok((rows, db::clear(c, uid)?))
         })
         .await?;
-    ctx.say(format!("Cleared {n} record(s) for {}", user.tag())).await?;
+    ctx.say(format!("Cleared {n} record(s) for {}", user.tag()))
+        .await?;
 
     let mut summary = rows
         .iter()
@@ -317,7 +378,15 @@ pub async fn clearrecords(
         vec![
             ("User", format!("<@{}> `{}`", user.id, user.id), true),
             ("Count", n.to_string(), true),
-            ("Destroyed", util::clamp_field(if summary.is_empty() { "nothing" } else { &summary }), false),
+            (
+                "Destroyed",
+                util::clamp_field(if summary.is_empty() {
+                    "nothing"
+                } else {
+                    &summary
+                }),
+                false,
+            ),
         ],
     )
     .await;
@@ -352,13 +421,35 @@ pub async fn mute(
         .data()
         .with_db(move |c| db::add(c, uid, mid, "mute", &r, Some(until_ts)))
         .await?;
-    notify(&ctx, &user, format!("You were muted for {}: {}", util::fmt_duration(secs), show(&reason))).await;
+    notify(
+        &ctx,
+        &user,
+        format!(
+            "You were muted for {}: {}",
+            util::fmt_duration(secs),
+            show(&reason)
+        ),
+    )
+    .await;
 
-    ctx.say(format!("Muted {} for {} — case #{case}", user.tag(), util::fmt_duration(secs))).await?;
+    ctx.say(format!(
+        "Muted {} for {} — case #{case}",
+        user.tag(),
+        util::fmt_duration(secs)
+    ))
+    .await?;
     logging::action(
-        ctx.serenity_context(), ctx.data(), logging::AMBER, "Mute", &user, ctx.author(), show(&reason),
-        Some(("Duration", util::fmt_duration(secs))), Some(case),
-    ).await;
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::AMBER,
+        "Mute",
+        &user,
+        ctx.author(),
+        show(&reason),
+        Some(("Duration", util::fmt_duration(secs))),
+        Some(case),
+    )
+    .await;
     Ok(())
 }
 
@@ -371,7 +462,18 @@ pub async fn unmute(
     let mut member = guild(&ctx)?.member(ctx, user.id).await?;
     member.enable_communication(ctx.http()).await?;
     ctx.say(format!("Unmuted {}", user.tag())).await?;
-    logging::action(ctx.serenity_context(), ctx.data(), logging::GREEN, "Unmute", &user, ctx.author(), "", None, None).await;
+    logging::action(
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::GREEN,
+        "Unmute",
+        &user,
+        ctx.author(),
+        "",
+        None,
+        None,
+    )
+    .await;
     Ok(())
 }
 
@@ -385,15 +487,29 @@ pub async fn kick(
     let reason = reason_or_blank(reason);
 
     notify(&ctx, &user, format!("You were kicked: {}", show(&reason))).await;
-    guild(&ctx)?.kick_with_reason(ctx.http(), user.id, show(&reason)).await?;
+    guild(&ctx)?
+        .kick_with_reason(ctx.http(), user.id, show(&reason))
+        .await?;
 
     let (uid, mid, r) = (user.id.get(), ctx.author().id.get(), reason.clone());
     let case = ctx
         .data()
         .with_db(move |c| db::add(c, uid, mid, "kick", &r, None))
         .await?;
-    ctx.say(format!("Kicked {} — case #{case}", user.tag())).await?;
-    logging::action(ctx.serenity_context(), ctx.data(), logging::RED, "Kick", &user, ctx.author(), show(&reason), None, Some(case)).await;
+    ctx.say(format!("Kicked {} — case #{case}", user.tag()))
+        .await?;
+    logging::action(
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::RED,
+        "Kick",
+        &user,
+        ctx.author(),
+        show(&reason),
+        None,
+        Some(case),
+    )
+    .await;
     Ok(())
 }
 
@@ -413,13 +529,18 @@ pub async fn ban(
     let reason = reason_or_blank(reason);
     let secs = match duration.as_deref() {
         None => None,
-        Some(d) => Some(
-            util::parse_duration(d).ok_or("bad duration, try 7d / 12h / 1d12h")?,
-        ),
+        Some(d) => Some(util::parse_duration(d).ok_or("bad duration, try 7d / 12h / 1d12h")?),
     };
 
-    let human = secs.map(util::fmt_duration).unwrap_or_else(|| "permanent".into());
-    notify(&ctx, &user, format!("You were banned ({human}): {}", show(&reason))).await;
+    let human = secs
+        .map(util::fmt_duration)
+        .unwrap_or_else(|| "permanent".into());
+    notify(
+        &ctx,
+        &user,
+        format!("You were banned ({human}): {}", show(&reason)),
+    )
+    .await;
 
     guild(&ctx)?
         .ban_with_reason(ctx.http(), user.id, purge_days.unwrap_or(0), show(&reason))
@@ -434,11 +555,20 @@ pub async fn ban(
     if expires.is_some() {
         ctx.data().unban_wake.notify_one();
     }
-    ctx.say(format!("Banned {} ({human}) — case #{case}", user.tag())).await?;
+    ctx.say(format!("Banned {} ({human}) — case #{case}", user.tag()))
+        .await?;
     logging::action(
-        ctx.serenity_context(), ctx.data(), logging::RED, "Ban", &user, ctx.author(), show(&reason),
-        Some(("Duration", human)), Some(case),
-    ).await;
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::RED,
+        "Ban",
+        &user,
+        ctx.author(),
+        show(&reason),
+        Some(("Duration", human)),
+        Some(case),
+    )
+    .await;
     Ok(())
 }
 
@@ -457,8 +587,17 @@ pub async fn softban(
     let reason = reason_or_blank(reason);
     let g = guild(&ctx)?;
 
-    notify(&ctx, &user, format!("You were softbanned (messages removed, you may rejoin): {}", show(&reason))).await;
-    g.ban_with_reason(ctx.http(), user.id, purge_days.unwrap_or(1), show(&reason)).await?;
+    notify(
+        &ctx,
+        &user,
+        format!(
+            "You were softbanned (messages removed, you may rejoin): {}",
+            show(&reason)
+        ),
+    )
+    .await;
+    g.ban_with_reason(ctx.http(), user.id, purge_days.unwrap_or(1), show(&reason))
+        .await?;
     g.unban(ctx.http(), user.id).await?;
 
     let (uid, mid, r) = (user.id.get(), ctx.author().id.get(), reason.clone());
@@ -466,8 +605,20 @@ pub async fn softban(
         .data()
         .with_db(move |c| db::add(c, uid, mid, "softban", &r, None))
         .await?;
-    ctx.say(format!("Softbanned {} — case #{case}", user.tag())).await?;
-    logging::action(ctx.serenity_context(), ctx.data(), logging::RED, "Softban", &user, ctx.author(), show(&reason), None, Some(case)).await;
+    ctx.say(format!("Softbanned {} — case #{case}", user.tag()))
+        .await?;
+    logging::action(
+        ctx.serenity_context(),
+        ctx.data(),
+        logging::RED,
+        "Softban",
+        &user,
+        ctx.author(),
+        show(&reason),
+        None,
+        Some(case),
+    )
+    .await;
     Ok(())
 }
 
@@ -484,12 +635,25 @@ pub async fn unban(
     guild(&ctx)?.unban(ctx.http(), id).await?;
 
     let uid = id.get();
-    ctx.data().with_db(move |c| db::mark_bans_undone(c, uid)).await?;
+    ctx.data()
+        .with_db(move |c| db::mark_bans_undone(c, uid))
+        .await?;
     ctx.say(format!("Unbanned `{id}`")).await?;
 
     match id.to_user(ctx.http()).await {
         Ok(user) => {
-            logging::action(ctx.serenity_context(), ctx.data(), logging::GREEN, "Unban", &user, ctx.author(), show(&reason), None, None).await;
+            logging::action(
+                ctx.serenity_context(),
+                ctx.data(),
+                logging::GREEN,
+                "Unban",
+                &user,
+                ctx.author(),
+                show(&reason),
+                None,
+                None,
+            )
+            .await;
         }
         Err(_) => {
             log_note(
@@ -517,7 +681,10 @@ pub async fn slowmode(
     seconds: u16,
 ) -> Result<(), Error> {
     ctx.channel_id()
-        .edit(ctx.http(), serenity::EditChannel::new().rate_limit_per_user(seconds))
+        .edit(
+            ctx.http(),
+            serenity::EditChannel::new().rate_limit_per_user(seconds),
+        )
         .await?;
     ctx.say(if seconds == 0 {
         "Slowmode off".to_string()
@@ -532,7 +699,15 @@ pub async fn slowmode(
         "Slowmode",
         vec![
             ("Channel", format!("<#{}>", ctx.channel_id()), true),
-            ("Interval", if seconds == 0 { "off".into() } else { format!("{seconds}s") }, true),
+            (
+                "Interval",
+                if seconds == 0 {
+                    "off".into()
+                } else {
+                    format!("{seconds}s")
+                },
+                true,
+            ),
         ],
     )
     .await;
@@ -547,7 +722,10 @@ async fn set_lock(ctx: &Ctx<'_>, locked: bool) -> Result<(), Error> {
     let (allow, deny) = if locked {
         (serenity::Permissions::empty(), perms)
     } else {
-        (serenity::Permissions::empty(), serenity::Permissions::empty())
+        (
+            serenity::Permissions::empty(),
+            serenity::Permissions::empty(),
+        )
     };
     ctx.channel_id()
         .create_permission(
@@ -567,8 +745,13 @@ async fn set_lock(ctx: &Ctx<'_>, locked: bool) -> Result<(), Error> {
 pub async fn lock(ctx: Ctx<'_>) -> Result<(), Error> {
     set_lock(&ctx, true).await?;
     ctx.say("Channel locked").await?;
-    log_note(&ctx, logging::AMBER, "Channel locked",
-        vec![("Channel", format!("<#{}>", ctx.channel_id()), true)]).await;
+    log_note(
+        &ctx,
+        logging::AMBER,
+        "Channel locked",
+        vec![("Channel", format!("<#{}>", ctx.channel_id()), true)],
+    )
+    .await;
     Ok(())
 }
 
@@ -577,8 +760,13 @@ pub async fn lock(ctx: Ctx<'_>) -> Result<(), Error> {
 pub async fn unlock(ctx: Ctx<'_>) -> Result<(), Error> {
     set_lock(&ctx, false).await?;
     ctx.say("Channel unlocked").await?;
-    log_note(&ctx, logging::GREEN, "Channel unlocked",
-        vec![("Channel", format!("<#{}>", ctx.channel_id()), true)]).await;
+    log_note(
+        &ctx,
+        logging::GREEN,
+        "Channel unlocked",
+        vec![("Channel", format!("<#{}>", ctx.channel_id()), true)],
+    )
+    .await;
     Ok(())
 }
 
@@ -596,7 +784,11 @@ pub async fn whois(
         .title(user.tag())
         .thumbnail(user.face())
         .field("ID", user.id.to_string(), true)
-        .field("Created", format!("<t:{}:R>", user.id.created_at().unix_timestamp()), true)
+        .field(
+            "Created",
+            format!("<t:{}:R>", user.id.created_at().unix_timestamp()),
+            true,
+        )
         .field("Records", n.to_string(), true);
 
     if let Some(m) = member {
@@ -606,13 +798,22 @@ pub async fn whois(
         if let Some(nick) = &m.nick {
             e = e.field("Nickname", nick.clone(), true);
         }
-        let roles = m.roles.iter().map(|r| format!("<@&{r}>")).collect::<Vec<_>>().join(" ");
+        let roles = m
+            .roles
+            .iter()
+            .map(|r| format!("<@&{r}>"))
+            .collect::<Vec<_>>()
+            .join(" ");
         if !roles.is_empty() {
             e = e.field("Roles", util::clamp_field(&roles), false);
         }
         if let Some(until) = m.communication_disabled_until {
             if until.unix_timestamp() > db::now() {
-                e = e.field("Muted until", format!("<t:{}:R>", until.unix_timestamp()), true);
+                e = e.field(
+                    "Muted until",
+                    format!("<t:{}:R>", until.unix_timestamp()),
+                    true,
+                );
             }
         }
     } else {

@@ -82,8 +82,10 @@ pub async fn purge(
     }
 
     if targets.is_empty() {
-        ctx.say(format!("Nothing matched ({seen} examined, {too_old} too old to bulk delete)"))
-            .await?;
+        ctx.say(format!(
+            "Nothing matched ({seen} examined, {too_old} too old to bulk delete)"
+        ))
+        .await?;
         return Ok(());
     }
 
@@ -120,7 +122,15 @@ pub async fn purge(
         .field("Channel", format!("<#{channel}>"), true)
         .field("Moderator", ctx.author().tag(), true)
         .field("Deleted", deleted.to_string(), true)
-        .field("Filters", if filters.is_empty() { "none".into() } else { filters }, false)
+        .field(
+            "Filters",
+            if filters.is_empty() {
+                "none".into()
+            } else {
+                filters
+            },
+            false,
+        )
         .timestamp(serenity::Timestamp::now());
     logging::send(ctx.serenity_context(), ctx.data(), e).await;
     Ok(())

@@ -54,7 +54,11 @@ impl Kind {
 }
 
 fn opener_of(topic: &str) -> Option<u64> {
-    topic.strip_prefix("Opened by <@")?.strip_suffix('>')?.parse().ok()
+    topic
+        .strip_prefix("Opened by <@")?
+        .strip_suffix('>')?
+        .parse()
+        .ok()
 }
 
 async fn ticket_of(
@@ -89,7 +93,13 @@ fn perms_in(
 #[poise::command(
     slash_command,
     guild_only,
-    subcommands("ticket_create", "ticket_add", "ticket_remove", "ticket_close", "ticket_pings"),
+    subcommands(
+        "ticket_create",
+        "ticket_add",
+        "ticket_remove",
+        "ticket_close",
+        "ticket_pings"
+    ),
     subcommand_required
 )]
 pub async fn ticket(_: Ctx<'_>) -> Result<(), Error> {
@@ -120,7 +130,11 @@ pub async fn ticket_create(
     let none = serenity::Permissions::empty();
     let ow = |kind, allow, deny| serenity::PermissionOverwrite { allow, deny, kind };
     let ours = vec![
-        ow(Ow::Role(serenity::RoleId::new(guild.get())), none, serenity::Permissions::VIEW_CHANNEL),
+        ow(
+            Ow::Role(serenity::RoleId::new(guild.get())),
+            none,
+            serenity::Permissions::VIEW_CHANNEL,
+        ),
         ow(Ow::Role(role), ACCESS, none),
         ow(Ow::Member(author), ACCESS, none),
         ow(Ow::Member(ctx.framework().bot_id), ACCESS, none),
@@ -195,7 +209,11 @@ pub async fn ticket_create(
 }
 
 /// Give a user access to this ticket
-#[poise::command(slash_command, rename = "add", required_permissions = "MODERATE_MEMBERS")]
+#[poise::command(
+    slash_command,
+    rename = "add",
+    required_permissions = "MODERATE_MEMBERS"
+)]
 pub async fn ticket_add(
     ctx: Ctx<'_>,
     #[description = "User"] user: serenity::User,
@@ -236,7 +254,11 @@ pub async fn ticket_add(
 }
 
 /// Take a user's access to this ticket away
-#[poise::command(slash_command, rename = "remove", required_permissions = "MODERATE_MEMBERS")]
+#[poise::command(
+    slash_command,
+    rename = "remove",
+    required_permissions = "MODERATE_MEMBERS"
+)]
 pub async fn ticket_remove(
     ctx: Ctx<'_>,
     #[description = "User"] user: serenity::User,
@@ -255,7 +277,11 @@ pub async fn ticket_remove(
         return deny(ctx, "User already can't view this ticket").await;
     }
     if perms.administrator() {
-        return deny(ctx, "Administrators see every channel, they can't be removed").await;
+        return deny(
+            ctx,
+            "Administrators see every channel, they can't be removed",
+        )
+        .await;
     }
 
     ch.id
@@ -284,17 +310,33 @@ pub async fn ticket_remove(
 }
 
 /// Close this ticket
-#[poise::command(slash_command, rename = "close", required_permissions = "MODERATE_MEMBERS")]
+#[poise::command(
+    slash_command,
+    rename = "close",
+    required_permissions = "MODERATE_MEMBERS"
+)]
 pub async fn ticket_close(ctx: Ctx<'_>) -> Result<(), Error> {
     let Some((ch, kind)) = ticket_of(ctx.serenity_context(), ctx.channel_id()).await else {
         return deny(ctx, NOT_TICKET).await;
     };
     ctx.say("Closing ticket").await?;
-    close_ticket(ctx.serenity_context(), ctx.data(), ch, kind, ctx.author(), None).await
+    close_ticket(
+        ctx.serenity_context(),
+        ctx.data(),
+        ch,
+        kind,
+        ctx.author(),
+        None,
+    )
+    .await
 }
 
 /// Turn staff role pings on new tickets on or off
-#[poise::command(slash_command, rename = "pings", required_permissions = "MODERATE_MEMBERS")]
+#[poise::command(
+    slash_command,
+    rename = "pings",
+    required_permissions = "MODERATE_MEMBERS"
+)]
 pub async fn ticket_pings(
     ctx: Ctx<'_>,
     #[description = "Ping staff roles when a ticket opens"] enabled: bool,
@@ -304,7 +346,13 @@ pub async fn ticket_pings(
         .await?;
     let state = if enabled { "on" } else { "off" };
     ctx.say(format!("Ticket pings {state}")).await?;
-    log_note(&ctx, logging::GREY, "Ticket pings", vec![("Pings", state.into(), true)]).await;
+    log_note(
+        &ctx,
+        logging::GREY,
+        "Ticket pings",
+        vec![("Pings", state.into(), true)],
+    )
+    .await;
     Ok(())
 }
 
@@ -339,18 +387,38 @@ async fn close_ticket(
         .color(logging::RED)
         .title(format!("Ticket closed - {}", ch.name))
         .field("Type", kind.name(), true)
-        .field("Opened by", opener.map_or("unknown".to_string(), |o| format!("<@{o}>")), true)
-        .field("Closed by", format!("{} `{}`", closer.tag(), closer.id), true)
-        .field("Created", format!("<t:{}:F>", ch.id.created_at().unix_timestamp()), true)
+        .field(
+            "Opened by",
+            opener.map_or("unknown".to_string(), |o| format!("<@{o}>")),
+            true,
+        )
+        .field(
+            "Closed by",
+            format!("{} `{}`", closer.tag(), closer.id),
+            true,
+        )
+        .field(
+            "Created",
+            format!("<t:{}:F>", ch.id.created_at().unix_timestamp()),
+            true,
+        )
         .field("Closed", format!("<t:{}:F>", db::now()), true)
         .field("Reason", util::clamp_field(&reason), false)
-        .field("Participants", util::clamp_field(if list.is_empty() { "none" } else { &list }), false)
+        .field(
+            "Participants",
+            util::clamp_field(if list.is_empty() { "none" } else { &list }),
+            false,
+        )
         .timestamp(serenity::Timestamp::now());
 
     let mut failed = 0;
     for id in &people {
         let dm = serenity::CreateMessage::new().embed(embed.clone());
-        if serenity::UserId::new(*id).direct_message(ctx, dm).await.is_err() {
+        if serenity::UserId::new(*id)
+            .direct_message(ctx, dm)
+            .await
+            .is_err()
+        {
             failed += 1;
         }
     }
@@ -377,7 +445,10 @@ async fn gate(
     member: Option<&serenity::Member>,
     channel: serenity::ChannelId,
 ) -> Result<(serenity::GuildChannel, Kind), &'static str> {
-    if !member.and_then(|m| m.permissions).is_some_and(|p| p.intersects(MOD)) {
+    if !member
+        .and_then(|m| m.permissions)
+        .is_some_and(|p| p.intersects(MOD))
+    {
         return Err("No access");
     }
     ticket_of(ctx, channel).await.ok_or(NOT_TICKET)

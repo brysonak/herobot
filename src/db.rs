@@ -107,7 +107,10 @@ pub fn get(c: &Connection, id: i64) -> rusqlite::Result<Option<Record>> {
 }
 
 pub fn set_reason(c: &Connection, id: i64, reason: &str) -> rusqlite::Result<usize> {
-    c.execute("update records set reason = ?2 where id = ?1", params![id, reason])
+    c.execute(
+        "update records set reason = ?2 where id = ?1",
+        params![id, reason],
+    )
 }
 
 pub fn count(c: &Connection, user: u64) -> rusqlite::Result<i64> {
@@ -183,7 +186,14 @@ pub fn cache_message(
     c.execute(
         "insert or replace into msgcache(id, channel_id, author_id, content, files, created)
          values(?1, ?2, ?3, ?4, ?5, ?6)",
-        params![id as i64, channel as i64, author as i64, content, files, now()],
+        params![
+            id as i64,
+            channel as i64,
+            author as i64,
+            content,
+            files,
+            now()
+        ],
     )
 }
 

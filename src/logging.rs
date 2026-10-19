@@ -81,7 +81,18 @@ pub async fn handle(
             let cached = ctx
                 .cache
                 .message(*channel_id, *deleted_message_id)
-                .map(|m| (m.author.id.get(), m.content.clone(), m.attachments.iter().map(|a| a.filename.clone()).collect::<Vec<_>>().join(", "), m.author.bot));
+                .map(|m| {
+                    (
+                        m.author.id.get(),
+                        m.content.clone(),
+                        m.attachments
+                            .iter()
+                            .map(|a| a.filename.clone())
+                            .collect::<Vec<_>>()
+                            .join(", "),
+                        m.author.bot,
+                    )
+                });
 
             let (author_id, content, files) = match cached {
                 Some((_, _, _, true)) => return Ok(()),
@@ -142,7 +153,11 @@ pub async fn handle(
                 .color(AMBER)
                 .title("Message edited")
                 .url(new.link())
-                .field("Author", format!("{} `{}`", new.author.tag(), new.author.id), true)
+                .field(
+                    "Author",
+                    format!("{} `{}`", new.author.tag(), new.author.id),
+                    true,
+                )
                 .field("Channel", format!("<#{}>", new.channel_id), true)
                 .field("Before", util::clamp_field(&before), false)
                 .field("After", util::clamp_field(&new.content), false)
@@ -187,13 +202,28 @@ pub async fn handle(
             ban_event(ctx, data, unbanned_user, false).await;
         }
 
-        E::GuildMemberUpdate { old_if_available, event, .. } => {
+        E::GuildMemberUpdate {
+            old_if_available,
+            event,
+            ..
+        } => {
             if let Some(old) = old_if_available {
-                let added: Vec<_> = event.roles.iter().filter(|r| !old.roles.contains(r)).collect();
-                let removed: Vec<_> = old.roles.iter().filter(|r| !event.roles.contains(r)).collect();
+                let added: Vec<_> = event
+                    .roles
+                    .iter()
+                    .filter(|r| !old.roles.contains(r))
+                    .collect();
+                let removed: Vec<_> = old
+                    .roles
+                    .iter()
+                    .filter(|r| !event.roles.contains(r))
+                    .collect();
                 if !added.is_empty() || !removed.is_empty() {
                     let names = |v: Vec<&serenity::RoleId>| {
-                        v.iter().map(|r| format!("<@&{r}>")).collect::<Vec<_>>().join(" ")
+                        v.iter()
+                            .map(|r| format!("<@&{r}>"))
+                            .collect::<Vec<_>>()
+                            .join(" ")
                     };
                     let mut e = serenity::CreateEmbed::new()
                         .color(GREY)
@@ -227,7 +257,11 @@ pub async fn handle(
                 .color(AMBER)
                 .title("Messages bulk deleted")
                 .field("Channel", format!("<#{channel_id}>"), true)
-                .field("Count", multiple_deleted_messages_ids.len().to_string(), true)
+                .field(
+                    "Count",
+                    multiple_deleted_messages_ids.len().to_string(),
+                    true,
+                )
                 .timestamp(serenity::Timestamp::now());
             send(ctx, data, e).await;
         }
@@ -266,7 +300,10 @@ async fn ban_event(ctx: &serenity::Context, data: &Data, user: &serenity::User, 
             })
         });
 
-    if entry.as_ref().is_some_and(|e| e.user_id == ctx.cache.current_user().id) {
+    if entry
+        .as_ref()
+        .is_some_and(|e| e.user_id == ctx.cache.current_user().id)
+    {
         return;
     }
 
@@ -276,7 +313,11 @@ async fn ban_event(ctx: &serenity::Context, data: &Data, user: &serenity::User, 
     };
     let e = serenity::CreateEmbed::new()
         .color(if added { RED } else { GREEN })
-        .title(if added { "Ban (outside the bot)" } else { "Unban (outside the bot)" })
+        .title(if added {
+            "Ban (outside the bot)"
+        } else {
+            "Unban (outside the bot)"
+        })
         .field("User", format!("{} `{}`", user.tag(), user.id), true)
         .field("Moderator", moderator, true)
         .field(
