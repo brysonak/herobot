@@ -1,6 +1,7 @@
 mod cmds;
 mod db;
 mod logging;
+mod patreon;
 mod purge;
 mod spam;
 mod tickets;
@@ -100,6 +101,18 @@ async fn main() {
                     unban_wake.clone(),
                 );
                 spawn_janitor(db.clone(), images.clone());
+
+                match std::env::var("PATREON_SECRET") {
+                    Ok(s) if !s.trim().is_empty() => {
+                        patreon::server::spawn(patreon::server::Hook {
+                            http: ctx.http.clone(),
+                            guild,
+                            log_channel,
+                            secret: s.trim().as_bytes().to_vec(),
+                        })
+                    }
+                    _ => eprintln!("PATREON_SECRET is not set, patreon webhook is disabled"),
+                }
 
                 Ok(Data {
                     db,
