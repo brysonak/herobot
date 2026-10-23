@@ -13,36 +13,37 @@ struct Tier {
     role: u64,
 }
 
+// Getting the IDs for these tiers was a lot more tedius than it should've been
 const TIER_ROLES: &[Tier] = &[
     Tier {
-        id: "",
+        id: "29570687",
         name: "Supporter",
         role: 1551297874992697464,
     },
     Tier {
-        id: "",
+        id: "29570716",
         name: "Founder",
         role: 1551298223405006870,
     },
     Tier {
-        id: "",
+        id: "29586526",
         name: "Hero",
         role: 1551298007624974366,
     },
     Tier {
-        id: "",
+        id: "29623520",
         name: "Legend",
         role: 1551298387968655371,
     },
     Tier {
-        id: "",
+        id: "29623523",
         name: "Show Off",
         role: 1551298457606688828,
     },
     Tier {
-        id: "",
+        id: "29623525",
         name: "Main Character",
-        role: 1551298457606688828,
+        role: 1551298501135311028,
     },
 ];
 
@@ -197,5 +198,18 @@ mod tests {
         assert_eq!(pick(&table, &["1"]), sorted(vec![all, 10]));
         assert_eq!(pick(&table, &["2", "3"]), sorted(vec![all, 20]));
         assert_eq!(pick(&table, &["1", "2"]), sorted(vec![all, 10, 20]));
+    }
+
+    // a typo in the real table (blank or repeated tier id) would silently skip roles
+    #[test]
+    fn real_table_is_sane() {
+        let mut ids: Vec<_> = TIER_ROLES.iter().map(|t| t.id).collect();
+        assert!(ids
+            .iter()
+            .all(|i| !i.is_empty() && i.bytes().all(|b| b.is_ascii_digit())));
+        ids.sort_unstable();
+        ids.dedup();
+        assert_eq!(ids.len(), TIER_ROLES.len());
+        assert!(TIER_ROLES.iter().all(|t| t.role != 0));
     }
 }
