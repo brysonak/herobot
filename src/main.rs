@@ -7,6 +7,7 @@ mod spam;
 mod tickets;
 mod translate;
 mod util;
+mod welcome;
 
 use poise::serenity_prelude as serenity;
 use std::collections::HashMap;

@@ -192,6 +192,7 @@ pub async fn handle(
                 e = e.field("Prior records", records.to_string(), true);
             }
             send(ctx, data, e).await;
+            crate::welcome::on_join(ctx, new_member).await;
         }
 
         E::GuildBanAddition { banned_user, .. } => {
