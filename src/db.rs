@@ -129,12 +129,14 @@ pub fn clear(c: &Connection, user: u64) -> rusqlite::Result<usize> {
     c.execute("delete from records where user_id = ?1", [user as i64])
 }
 
-pub fn due_unbans(c: &Connection) -> rusqlite::Result<Vec<(i64, u64)>> {
+pub fn due_expiries(c: &Connection) -> rusqlite::Result<Vec<(i64, u64, String)>> {
     let mut st = c.prepare(
-        "select id, user_id from records
-         where kind = 'ban' and undone = 0 and expires is not null and expires <= ?1",
+        "select id, user_id, kind from records
+         where kind in ('ban', 'mute') and undone = 0 and expires is not null and expires <= ?1",
     )?;
-    let rows = st.query_map([now()], |r| Ok((r.get(0)?, r.get::<_, i64>(1)? as u64)))?;
+    let rows = st.query_map([now()], |r| {
+        Ok((r.get(0)?, r.get::<_, i64>(1)? as u64, r.get(2)?))
+    })?;
     rows.collect()
 }
 
@@ -142,10 +144,10 @@ pub fn mark_undone(c: &Connection, id: i64) -> rusqlite::Result<usize> {
     c.execute("update records set undone = 1 where id = ?1", [id])
 }
 
-pub fn mark_bans_undone(c: &Connection, user: u64) -> rusqlite::Result<usize> {
+pub fn mark_user_undone(c: &Connection, user: u64, kind: &str) -> rusqlite::Result<usize> {
     c.execute(
-        "update records set undone = 1 where user_id = ?1 and kind = 'ban' and undone = 0",
-        [user as i64],
+        "update records set undone = 1 where user_id = ?1 and kind = ?2 and undone = 0",
+        params![user as i64, kind],
     )
 }
 
@@ -229,10 +231,10 @@ pub fn prune_cache(c: &Connection, keep_days: i64) -> rusqlite::Result<usize> {
     )
 }
 
-pub fn next_unban(c: &Connection) -> rusqlite::Result<Option<i64>> {
+pub fn next_expiry(c: &Connection) -> rusqlite::Result<Option<i64>> {
     c.query_row(
         "select min(expires) from records
-         where kind = 'ban' and undone = 0 and expires is not null",
+         where kind in ('ban', 'mute') and undone = 0 and expires is not null",
         [],
         |r| r.get::<_, Option<i64>>(0),
     )

@@ -159,23 +159,33 @@ fn spawn_unban_sweeper(
             let (due, next) = {
                 let c = db.lock().unwrap();
                 (
-                    db::due_unbans(&c).unwrap_or_default(),
-                    db::next_unban(&c).ok().flatten(),
+                    db::due_expiries(&c).unwrap_or_default(),
+                    db::next_expiry(&c).ok().flatten(),
                 )
             };
 
-            for (id, user) in due {
+            for (id, user, kind) in due {
                 let user = serenity::UserId::new(user);
-                match guild.unban(&http, user).await {
+                let (title, result) = if kind == "mute" {
+                    let role = serenity::RoleId::new(cmds::MUTE_ROLE);
+                    (
+                        "Mute expired",
+                        http.remove_member_role(guild, user, role, Some("Mute expired"))
+                            .await,
+                    )
+                } else {
+                    ("Temp ban expired", guild.unban(&http, user).await)
+                };
+                match result {
                     Ok(_) => {
                         let e = serenity::CreateEmbed::new()
                             .color(logging::GREEN)
-                            .title(format!("Temp ban expired - case #{id}"))
+                            .title(format!("{title} - case #{id}"))
                             .field("User", format!("<@{user}> `{user}`"), true)
                             .timestamp(serenity::Timestamp::now());
                         logging::send_to(&http, log_channel, e).await;
                     }
-                    Err(e) => eprintln!("unban {user} failed: {e}"),
+                    Err(e) => eprintln!("{kind} expiry for {user} failed: {e}"),
                 }
                 if let Err(e) = db::mark_undone(&db.lock().unwrap(), id) {
                     eprintln!("could not mark record {id}: {e}");

@@ -3,6 +3,8 @@ use poise::serenity_prelude as serenity;
 
 const MAX_TIMEOUT: i64 = 28 * 86_400;
 
+pub const MUTE_ROLE: u64 = 1549514971128266752;
+
 const NO_REASON: &str = "*(no reason given)*";
 
 fn reason_or_blank(r: Option<String>) -> String {
@@ -411,17 +413,28 @@ pub async fn mute(
     let reason = reason_or_blank(reason);
     let until = serenity::Timestamp::from_unix_timestamp(db::now() + secs)?;
 
-    let mut member = guild(&ctx)?.member(ctx, user.id).await?;
+    let g = guild(&ctx)?;
+    let mut member = g.member(ctx, user.id).await?;
     member
         .disable_communication_until_datetime(ctx.http(), until)
         .await?;
+    let role_ok = ctx
+        .http()
+        .add_member_role(g, user.id, serenity::RoleId::new(MUTE_ROLE), Some("Muted"))
+        .await
+        .map_err(|e| eprintln!("mute role for {} failed: {e}", user.id))
+        .is_ok();
 
     let (uid, mid, r) = (user.id.get(), ctx.author().id.get(), reason.clone());
     let until_ts = db::now() + secs;
     let case = ctx
         .data()
-        .with_db(move |c| db::add(c, uid, mid, "mute", &r, Some(until_ts)))
+        .with_db(move |c| {
+            db::mark_user_undone(c, uid, "mute")?;
+            db::add(c, uid, mid, "mute", &r, Some(until_ts))
+        })
         .await?;
+    ctx.data().unban_wake.notify_one();
     notify(
         &ctx,
         &user,
@@ -434,9 +447,10 @@ pub async fn mute(
     .await;
 
     ctx.say(format!(
-        "Muted {} for {} - case #{case}",
+        "Muted {} for {} - case #{case}{}",
         user.tag(),
-        util::fmt_duration(secs)
+        util::fmt_duration(secs),
+        if role_ok { "" } else { " - mute role failed" }
     ))
     .await?;
     logging::action(
@@ -460,8 +474,21 @@ pub async fn unmute(
     ctx: Ctx<'_>,
     #[description = "User"] user: serenity::User,
 ) -> Result<(), Error> {
-    let mut member = guild(&ctx)?.member(ctx, user.id).await?;
+    let g = guild(&ctx)?;
+    let mut member = g.member(ctx, user.id).await?;
     member.enable_communication(ctx.http()).await?;
+    ctx.http()
+        .remove_member_role(
+            g,
+            user.id,
+            serenity::RoleId::new(MUTE_ROLE),
+            Some("Unmuted"),
+        )
+        .await?;
+    let uid = user.id.get();
+    ctx.data()
+        .with_db(move |c| db::mark_user_undone(c, uid, "mute"))
+        .await?;
     ctx.say(format!("Unmuted {}", user.tag())).await?;
     logging::action(
         ctx.serenity_context(),
@@ -637,7 +664,7 @@ pub async fn unban(
 
     let uid = id.get();
     ctx.data()
-        .with_db(move |c| db::mark_bans_undone(c, uid))
+        .with_db(move |c| db::mark_user_undone(c, uid, "ban"))
         .await?;
     ctx.say(format!("Unbanned `{id}`")).await?;
 
