@@ -295,9 +295,11 @@ async fn ban_event(ctx: &serenity::Context, data: &Data, user: &serenity::User, 
         .await
         .ok()
         .and_then(|logs| {
-            logs.entries.into_iter().find(|e: &serenity::AuditLogEntry| {
-                e.action.num() == want && e.target_id.map(|t| t.get()) == Some(user.id.get())
-            })
+            logs.entries
+                .into_iter()
+                .find(|e: &serenity::AuditLogEntry| {
+                    e.action.num() == want && e.target_id.map(|t| t.get()) == Some(user.id.get())
+                })
         });
 
     if entry
