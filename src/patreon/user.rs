@@ -1,9 +1,12 @@
 use super::server::Hook;
-use crate::{logging, util, Error};
+use crate::{db, logging, util, Error};
 use poise::serenity_prelude as serenity;
 use serde_json::Value;
 
 const THANKS_CHANNEL: u64 = 1548069053946527754;
+
+/// kv key, "0" means the "thank you" message is off
+pub const THANKS_KEY: &str = "patreon_thanks";
 
 const ALL_SUBSCRIBERS_ROLE: u64 = 1551378471228280902;
 
@@ -124,18 +127,28 @@ pub async fn subscribed(h: &Hook, body: &Value) -> Result<(), Error> {
         Some(u) => format!("<@{u}>"),
         None => name.to_string(),
     };
+    let thanks_on = db::kv_get(&h.db.lock().unwrap(), THANKS_KEY)
+        .ok()
+        .flatten()
+        .as_deref()
+        != Some("0");
     let mut mentions = serenity::CreateAllowedMentions::new();
     if let Some(u) = discord {
         mentions = mentions.users([u]);
     }
-    let thanked = serenity::ChannelId::new(THANKS_CHANNEL)
-        .send_message(
-            &h.http,
-            serenity::CreateMessage::new()
-                .content(format!("Thank you {who} for subscribing with {tiers}!"))
-                .allowed_mentions(mentions),
-        )
-        .await;
+    let thanked = if thanks_on {
+        serenity::ChannelId::new(THANKS_CHANNEL)
+            .send_message(
+                &h.http,
+                serenity::CreateMessage::new()
+                    .content(format!("Thank you {who} for subscribing with {tiers}!"))
+                    .allowed_mentions(mentions),
+            )
+            .await
+            .map(drop)
+    } else {
+        Ok(())
+    };
 
     let who_log = match discord {
         Some(u) => format!("<@{u}> `{u}`"),
@@ -151,6 +164,9 @@ pub async fn subscribed(h: &Hook, body: &Value) -> Result<(), Error> {
         .timestamp(serenity::Timestamp::now());
     if failed > 0 {
         e = e.field("Role failures", failed.to_string(), true);
+    }
+    if !thanks_on {
+        e = e.field("Thank-you message", "off", true);
     }
     logging::send_to(&h.http, h.log_channel, e).await;
 

@@ -109,6 +109,7 @@ async fn main() {
                             guild,
                             log_channel,
                             secret: s.trim().as_bytes().to_vec(),
+                            db: db.clone(),
                         })
                     }
                     _ => eprintln!("PATREON_SECRET is not set, patreon webhook is disabled"),

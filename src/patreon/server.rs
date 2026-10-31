@@ -24,6 +24,7 @@ pub struct Hook {
     pub guild: serenity::GuildId,
     pub log_channel: serenity::ChannelId,
     pub secret: Vec<u8>,
+    pub db: crate::spam::Db,
 }
 
 type Resp = Response<Full<Bytes>>;
@@ -170,6 +171,7 @@ mod tests {
             guild: serenity::GuildId::new(1),
             log_channel: serenity::ChannelId::new(1),
             secret: SECRET.to_vec(),
+            db: Arc::new(std::sync::Mutex::new(crate::db::open(":memory:").unwrap())),
         };
         tokio::spawn(serve(listener, Arc::new(hook)));
         addr

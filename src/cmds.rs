@@ -50,6 +50,7 @@ pub fn all() -> Vec<poise::Command<crate::Data, Error>> {
         lock(),
         unlock(),
         whois(),
+        patreon_notifications(),
         crate::purge::purge(),
         crate::tickets::ticket(),
         crate::translate::translate(),
@@ -793,6 +794,39 @@ pub async fn unlock(ctx: Ctx<'_>) -> Result<(), Error> {
         logging::GREEN,
         "Channel unlocked",
         vec![("Channel", format!("<#{}>", ctx.channel_id()), true)],
+    )
+    .await;
+    Ok(())
+}
+
+/// Turn the patreon thank-you message on or off. Roles are still given
+#[poise::command(
+    slash_command,
+    guild_only,
+    rename = "patreon-notifications",
+    required_permissions = "MANAGE_MESSAGES"
+)]
+pub async fn patreon_notifications(
+    ctx: Ctx<'_>,
+    #[description = "Post a thank-you when someone subscribes"] enabled: bool,
+) -> Result<(), Error> {
+    ctx.data()
+        .with_db(move |c| {
+            db::kv_set(
+                c,
+                crate::patreon::user::THANKS_KEY,
+                if enabled { "1" } else { "0" },
+            )
+        })
+        .await?;
+    let state = if enabled { "on" } else { "off" };
+    ctx.say(format!("Patreon thank-you messages {state}"))
+        .await?;
+    log_note(
+        &ctx,
+        logging::GREY,
+        "Patreon thank-you messages",
+        vec![("Messages", state.into(), true)],
     )
     .await;
     Ok(())
