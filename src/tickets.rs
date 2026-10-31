@@ -5,7 +5,7 @@ use poise::ChoiceParameter;
 
 const CATEGORY: u64 = 1551418015042768906;
 const USER_ISSUE_ROLE: u64 = 1551007200577585242;
-const BUG_ROLE: u64 = 1545893087031599145;
+const GENERAL_ROLE: u64 = 1545893087031599145;
 
 const PINGS_KEY: &str = "ticket_pings";
 const CLOSE: &str = "ticket:close";
@@ -26,30 +26,32 @@ const MOD: serenity::Permissions =
 pub enum Kind {
     #[name = "User issue"]
     UserIssue,
-    #[name = "Bug report"]
-    BugReport,
+    #[name = "General Question"]
+    GeneralQuestion,
 }
 
 impl Kind {
     fn prefix(self) -> &'static str {
         match self {
             Kind::UserIssue => "userissue-",
-            Kind::BugReport => "bug-",
+            Kind::GeneralQuestion => "question-",
         }
     }
 
     fn role(self) -> serenity::RoleId {
         serenity::RoleId::new(match self {
             Kind::UserIssue => USER_ISSUE_ROLE,
-            Kind::BugReport => BUG_ROLE,
+            Kind::GeneralQuestion => GENERAL_ROLE,
         })
     }
 
     fn from_channel(name: &str) -> Option<Kind> {
-        [Kind::UserIssue, Kind::BugReport].into_iter().find(|k| {
-            name.strip_prefix(k.prefix())
-                .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
-        })
+        [Kind::UserIssue, Kind::GeneralQuestion]
+            .into_iter()
+            .find(|k| {
+                name.strip_prefix(k.prefix())
+                    .is_some_and(|n| !n.is_empty() && n.bytes().all(|b| b.is_ascii_digit()))
+            })
     }
 }
 

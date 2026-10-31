@@ -192,6 +192,7 @@ pub async fn handle(
                 e = e.field("Prior records", records.to_string(), true);
             }
             send(ctx, data, e).await;
+            crate::welcome::on_join(ctx, new_member).await;
         }
 
         E::GuildBanAddition { banned_user, .. } => {
@@ -295,9 +296,11 @@ async fn ban_event(ctx: &serenity::Context, data: &Data, user: &serenity::User, 
         .await
         .ok()
         .and_then(|logs| {
-            logs.entries.into_iter().find(|e: &serenity::AuditLogEntry| {
-                e.action.num() == want && e.target_id.map(|t| t.get()) == Some(user.id.get())
-            })
+            logs.entries
+                .into_iter()
+                .find(|e: &serenity::AuditLogEntry| {
+                    e.action.num() == want && e.target_id.map(|t| t.get()) == Some(user.id.get())
+                })
         });
 
     if entry

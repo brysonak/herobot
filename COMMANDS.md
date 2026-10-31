@@ -1,4 +1,5 @@
 # herobot commands
+![banner](assets/herobanner.png)
 
 ## Moderation
 
@@ -149,7 +150,7 @@ denied before you locked it, unlocking leaves it more open than it started.
 
 ## Tickets
 
-Tickets are channels under the ticket category, named `userissue-N` or `bug-N`
+Tickets are channels under the ticket category, named `userissue-N` or `question-N`
 with separate counters.
 
 ### `/ticket create <category>`
