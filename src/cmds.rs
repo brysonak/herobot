@@ -109,6 +109,7 @@ pub async fn warn(
     #[description = "User to warn"] user: serenity::User,
     #[description = "Why (can be filled in later with /case reason)"] reason: Option<String>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     hierarchy_ok(&ctx, user.id).await?;
     let reason = reason_or_blank(reason);
 
@@ -405,6 +406,7 @@ pub async fn mute(
     #[description = "30m / 2h / 1d12h"] duration: String,
     #[description = "Why (can be filled in later with /case reason)"] reason: Option<String>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     hierarchy_ok(&ctx, user.id).await?;
     let secs = util::parse_duration(&duration)
         .ok_or("bad duration, try 30m / 2h / 1d12h (bare numbers mean minutes)")?;
@@ -512,6 +514,7 @@ pub async fn kick(
     #[description = "User"] user: serenity::User,
     #[description = "Why (can be filled in later with /case reason)"] reason: Option<String>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     hierarchy_ok(&ctx, user.id).await?;
     let reason = reason_or_blank(reason);
 
@@ -554,6 +557,7 @@ pub async fn ban(
     #[max = 7]
     purge_days: Option<u8>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     hierarchy_ok(&ctx, user.id).await?;
     let reason = reason_or_blank(reason);
     let secs = match duration.as_deref() {
@@ -612,6 +616,7 @@ pub async fn softban(
     #[max = 7]
     purge_days: Option<u8>,
 ) -> Result<(), Error> {
+    ctx.defer().await?;
     hierarchy_ok(&ctx, user.id).await?;
     let reason = reason_or_blank(reason);
     let g = guild(&ctx)?;
